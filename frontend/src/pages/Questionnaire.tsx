@@ -28,10 +28,10 @@ const Questionnaire = () => {
         // Check if the user needs to be shown a follow-up question
         if (step === 2) { // After film format selection
             if (answer === "Instant Film") {
-                setStep(10); // Skip to instant film question
+                setStep(11); // Skip to instant film question
                 return;
             } else if (answer === "Large Format") {
-                setStep(11); // Skip to large format question
+                setStep(12); // Skip to large format question
                 return;
             }
         }
