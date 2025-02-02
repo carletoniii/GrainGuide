@@ -37,14 +37,24 @@ const getFilteredFilmStocks = async (userAnswers: string[]) => {
     try {
         // Extract color preference from answers
         const isColor = userAnswers.includes("Color") ? true : false;
+        const isInstantFilm = userAnswers.includes("Instant Film");
+        const isLargeFormat = userAnswers.includes("Large Format");
 
         console.log("🔍 Fetching film stocks with color:", isColor);
 
-        const result = await pool.query(
-            `SELECT id, name FROM film_stocks WHERE color = $1`,
-            [isColor]
-        );
+        // Modify the query to account for the Instant Film and Large Format answers
+        let query = `SELECT id, name FROM film_stocks WHERE color = $1`;
+        const queryParams = [isColor];
 
+        // Add conditions based on Instant Film or Large Format selection
+        if (isInstantFilm) {
+            query += ` AND format @> '{"Instant Film"}'`;  // Filter for Instant Film
+        }
+        if (isLargeFormat) {
+            query += ` AND format @> '{"Large Format"}'`;  // Filter for Large Format
+        }
+
+        const result = await pool.query(query, queryParams);
         return result.rows;
     } catch (error) {
         console.error("❌ Error fetching film stocks:", error);
@@ -71,8 +81,11 @@ const generateRecommendationsWithOpenAI = async (filmStocks: any[], userAnswers:
 
         console.log("🔍 OpenAI Response:", response.choices[0]?.message?.content);
 
+        // Parse the response correctly and return the film stocks
         const parsedResponse = JSON.parse(response.choices[0]?.message?.content ?? "{}");
-        return parsedResponse.recommendations || [];
+        const openAiResponse = parsedResponse.recommendations?.map((rec: any) => rec.film_stock) || [];
+
+        return openAiResponse;
     } catch (error) {
         console.error("❌ Error generating recommendations from OpenAI:", error);
         return [];

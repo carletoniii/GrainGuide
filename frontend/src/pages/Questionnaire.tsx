@@ -13,6 +13,8 @@ const questions = [
     { id: 8, text: "Do you prefer warm or cool tones in your color film?", options: ["Warm (Golden, rich skin tones)", "Cool (Bluish, neutral tones)", "Balanced (Natural, true-to-life colors)"] },
     { id: 9, text: "Do you want a vintage or modern look?", options: ["Vintage (Muted tones, lower saturation)", "Modern (Crisp, vibrant colors)", "Doesn’t matter"] },
     { id: 10, text: "Would you rather have a sharp or dreamy look?", options: ["Sharp (Crisp details, high resolution)", "Dreamy (Soft focus, glowing highlights)", "Doesn’t matter"] },
+    { id: 11, text: "What type of instant film are you using?", options: ["Fujifilm Instax Mini", "Fujifilm Instax Square", "Fujifilm Instax Wide", "Polaroid i-Type", "Polaroid 600", "Polaroid SX-70", "Polaroid 8x10"] },
+    { id: 12, text: "What size of large format film are you using?", options: ["4x5", "8x10"] },
 ];
 
 const Questionnaire = () => {
@@ -22,6 +24,17 @@ const Questionnaire = () => {
 
     const handleNext = (answer: string) => {
         setAnswers((prev) => ({ ...prev, [questions[step].id]: answer }));
+
+        // Check if the user needs to be shown a follow-up question
+        if (step === 2) { // After film format selection
+            if (answer === "Instant Film") {
+                setStep(10); // Skip to instant film question
+                return;
+            } else if (answer === "Large Format") {
+                setStep(11); // Skip to large format question
+                return;
+            }
+        }
 
         if (step < questions.length - 1) {
             setStep(step + 1);
