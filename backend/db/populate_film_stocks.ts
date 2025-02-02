@@ -25,8 +25,28 @@ const populateDatabase = async () => {
         fs.createReadStream(csvFilePath)
             .pipe(csvParser())
             .on("data", (row) => {
+                // Preprocess the 'format' field to convert to an array
+                const formatArray = row.format
+                    ? row.format
+                        .replace(/{/g, '')         // Remove the opening curly brace
+                        .replace(/}/g, '')         // Remove the closing curly brace
+                        .split(',')                // Split by commas
+                        .map((item: string) => item.trim().replace(/'/g, '')) // Trim each item and remove quotes
+                    : [];
+
                 // Store the row data from CSV
-                filmStocks.push(row);
+                filmStocks.push({
+                    name: row.name,
+                    brand: row.brand,
+                    format: formatArray,
+                    iso: row.iso,
+                    color: row.color,
+                    contrast: row.contrast,
+                    grain: row.grain,
+                    description: row.description,
+                    image_url: row.image_url,
+                    example_images: row.example_images,
+                });
             })
             .on("end", async () => {
                 console.log(`📂 Read ${filmStocks.length} film stocks from CSV. Importing into database...`);
@@ -40,7 +60,7 @@ const populateDatabase = async () => {
                         [
                             stock.name,
                             stock.brand,
-                            stock.format,
+                            stock.format,  // Array will be inserted directly here
                             parseInt(stock.iso),
                             stock.color.toLowerCase() === "true",
                             stock.contrast.toLowerCase(),
@@ -60,6 +80,8 @@ const populateDatabase = async () => {
         pool.end();
     }
 };
+
+
 
 // Run the function
 populateDatabase();

@@ -16,11 +16,11 @@ const createTables = async () => {
         id SERIAL PRIMARY KEY,
         name TEXT UNIQUE NOT NULL,
         brand TEXT NOT NULL,
-        format TEXT NOT NULL,
+        format TEXT[] NOT NULL,  -- Define as array of text
         iso INTEGER NOT NULL,
         color BOOLEAN NOT NULL,
         contrast TEXT CHECK (contrast IN ('low', 'medium', 'high')),
-        grain TEXT CHECK (grain IN ('fine', 'medium', 'heavy')),
+        grain TEXT CHECK (grain IN ('fine', 'medium', 'heavy', 'ultra fine', 'variable')),
         description TEXT,
         image_url TEXT,
         example_images TEXT
