@@ -35,39 +35,26 @@ const openai = new OpenAI({
 // Function to fetch compatible film stocks based on user input
 const getFilteredFilmStocks = async (userAnswers: string[]) => {
     try {
-        const isColor = userAnswers.includes("Color") ? true : false;
-        const isInstantFilm = userAnswers.includes("Instant Film");
+        const isColor = userAnswers.includes("Color");
         const isLargeFormat = userAnswers.includes("Large Format");
-        const is35mm = userAnswers.includes("35mm");
-        const is120mm = userAnswers.includes("120 (Medium Format)");
 
-        // Start the query by checking for color preference
-        let query = `SELECT id, name FROM film_stocks WHERE color = $1`;
+        let query = `SELECT id, name, format, color FROM film_stocks WHERE color = $1`;
         const queryParams: (boolean | string)[] = [isColor];
 
-        // Add format filters with proper PostgreSQL array matching
-        if (is35mm) {
-            query += ` AND format @> ARRAY['35mm']::text[]`;  // PostgreSQL array literal syntax
-        }
-        if (is120mm) {
-            query += ` AND format @> ARRAY['120']::text[]`;
-        }
-
-        // If Instant Film is selected, check for specific instant films
-        if (isInstantFilm) {
-            query += ` AND (format @> '{"Fujifilm Instax Mini"}' OR format @> '{"Fujifilm Instax Square"}' OR format @> '{"Fujifilm Instax Wide"}' OR format @> '{"Polaroid i-Type"}' OR format @> '{"Polaroid 600"}' OR format @> '{"Polaroid SX-70"}' OR format @> '{"Polaroid 8x10"}')`;
-        }
-
-        // If Large Format is selected, check for 4x5 or 8x10 formats in the "Large Format" group
         if (isLargeFormat) {
-            query += ` AND (format @> '{"Large Format (4x5)"}' OR format @> '{"Large Format (8x10)"}')`;
+            query += ` AND EXISTS (
+                SELECT 1 FROM unnest(format) AS f 
+                WHERE f IN ('Large Format (4x5)', 'Large Format (8x10)')
+            )`;
         }
 
-        // Log the query to ensure it's formed correctly
-        console.log("Generated Query:", query);
-        console.log("Query Parameters:", queryParams);
+        console.log("🟢 Generated Query:", query);
+        console.log("🟢 Query Parameters:", queryParams);
 
         const result = await pool.query(query, queryParams);
+
+        console.log("🔵 Query Result (Rows Returned):", result.rows);
+
         return result.rows;
     } catch (error) {
         console.error("❌ Error fetching film stocks:", error);
@@ -76,44 +63,88 @@ const getFilteredFilmStocks = async (userAnswers: string[]) => {
 };
 
 // Function to generate recommendations using OpenAI
-// Function to generate recommendations using OpenAI
 const generateRecommendationsWithOpenAI = async (filmStocks: any[], userAnswers: string[]) => {
     try {
-        const stockNames = filmStocks.map((f) => f.name).join(", ");
+        const stockNames = filmStocks.map((f) => `"${f.name}"`).join(", ");
         const prompt = `Based on the user's preferences, rank the top 3 film stocks from this list:
-        [${stockNames}]. Respond **only** with a JSON object containing "recommendations".
+[${stockNames}]. Respond **only** with a JSON object formatted like this:
 
-        Preferences: ${userAnswers.join(", ")}`;
+{
+    "recommendations": ["Film Stock 1", "Film Stock 2", "Film Stock 3"]
+}
+
+Preferences: ${userAnswers.join(", ")}`;
 
         const response = await openai.chat.completions.create({
             model: "gpt-4-turbo",
             messages: [
-                { role: "system", content: "You are a film photography expert. Rank the best 3 film stocks from the given list and respond with a JSON object." },
+                { role: "system", content: "You are a film photography expert. Rank the best 3 film stocks from the given list and respond with a JSON object containing only film stock names." },
                 { role: "user", content: prompt }
             ],
         });
 
-        // Clean the response to remove markdown/code block formatting
+        console.log("🟢 OpenAI Raw Response:", response);
+
         const content = response.choices[0]?.message?.content;
-        const cleanedResponse = content ? content.replace(/```json|```/g, '').trim() : '';
+        if (!content) {
+            console.error("❌ OpenAI returned an empty response.");
+            return [];
+        }
 
-        // Parse the cleaned response
-        const parsedResponse = JSON.parse(cleanedResponse ?? "{}");
-        const openAiResponse = parsedResponse.recommendations?.map((rec: any) => rec.film_stock) || [];
-
-        return openAiResponse;
+        const cleanedResponse = content.replace(/```json|```/g, '').trim();
+        try {
+            const parsedResponse = JSON.parse(cleanedResponse);
+            console.log("🟢 Parsed OpenAI Response:", parsedResponse);
+            return parsedResponse.recommendations || [];
+        } catch (error) {
+            console.error("❌ Error parsing OpenAI response:", error);
+            return [];
+        }
     } catch (error) {
         console.error("❌ Error generating recommendations from OpenAI:", error);
         return [];
     }
 };
 
-
 // API Route to get film recommendations
 app.post("/api/recommendations", async (req: Request, res: Response): Promise<void> => {
     try {
         const userAnswers = req.body.answers ?? [];
 
+        // If Instant Film is selected, return only the selected instant film type
+        const instantFilmMapping: Record<string, string> = {
+            "Fujifilm Instax Mini": "Fujifilm Instax Mini",
+            "Fujifilm Instax Square": "Fujifilm Instax Square",
+            "Fujifilm Instax Wide": "Fujifilm Instax Wide",
+            "Polaroid i-Type": "Polaroid i-Type Film",
+            "Polaroid 600": "Polaroid 600 Film",
+            "Polaroid SX-70": "Polaroid SX-70 Film",
+            "Polaroid 8x10": "Polaroid 8x10 Film"
+        };
+
+        // Check if instant film was selected
+        const selectedInstantFilm = userAnswers.find((answer: string) => instantFilmMapping[answer]);
+
+        if (selectedInstantFilm) {
+            const filmNameInDatabase = instantFilmMapping[selectedInstantFilm];
+
+            const instantFilmQuery = `SELECT id, name FROM film_stocks WHERE name = $1`;
+            const instantFilmResult = await pool.query(instantFilmQuery, [filmNameInDatabase]);
+
+            if (instantFilmResult.rows.length > 0) {
+                res.json({
+                    film_stock_1: instantFilmResult.rows[0].id,
+                    film_stock_2: null,
+                    film_stock_3: null
+                });
+                return;
+            } else {
+                res.status(404).json({ error: "Selected instant film type not found in database." });
+                return;
+            }
+        }
+
+        // Continue as normal for other film types
         const answerCombination = userAnswers.join(",");
 
         const existingResult = await pool.query(
@@ -131,53 +162,40 @@ app.post("/api/recommendations", async (req: Request, res: Response): Promise<vo
         }
 
         const filmStocks = await getFilteredFilmStocks(userAnswers);
-
         if (filmStocks.length === 0) {
             res.status(404).json({ error: "No matching film stocks found. Try adjusting your preferences." });
             return;
         }
 
         const openAiResponse = await generateRecommendationsWithOpenAI(filmStocks, userAnswers);
+        if (openAiResponse.length === 0) {
+            res.status(404).json({ error: "AI could not generate recommendations." });
+            return;
+        }
 
-        const filmStockQuery = `SELECT id, name FROM film_stocks WHERE name = ANY($1::text[])`;
-        const filmStockResult = await pool.query(filmStockQuery, [openAiResponse]);
+        // Convert OpenAI film stock names to IDs using `IN` instead of `ANY`
+        const filmStockQuery = `SELECT id, name FROM film_stocks WHERE LOWER(name) IN (${openAiResponse.map((_: string, i: number) => `$${i + 1}`).join(", ")})`;
+        const filmStockResult = await pool.query(filmStockQuery, openAiResponse.map((name: string) => name.toLowerCase()));
 
-        // Debugging: Log the film stock map
+        console.log("🟢 Retrieved Film Stock IDs from Database:", filmStockResult.rows);
+
         const filmStockMap: Record<string, number> = {};
         filmStockResult.rows.forEach((row: { id: number; name: string }) => {
-            filmStockMap[row.name] = row.id;
+            filmStockMap[row.name.toLowerCase()] = row.id;
         });
 
-        // Debugging: Check the map content
-        console.log("Film Stock Map:", filmStockMap);
-
-        // Convert film stock names to IDs
         const filmStockIds: (number | null)[] = openAiResponse
-            .map((name: string) => filmStockMap[name] ?? null)
+            .map((name: string) => {
+                const id = filmStockMap[name.toLowerCase()] ?? null;
+                if (!id) console.log(`⚠️ No match found for film stock: ${name}`);
+                return id;
+            })
             .filter((id: number | null): id is number => id !== null);
 
-        // Debugging: Check the final IDs before responding
-        console.log("Film Stock IDs for Response:", filmStockIds);
-
-        // Fill in missing recommendations with null if fewer than 3
-        const recommendations = [
-            filmStockIds[0] ?? null,
-            filmStockIds[1] ?? null,
-            filmStockIds[2] ?? null
-        ];
-
-        // Store the recommendations in the database, allowing NULLs
-        await pool.query(
-            `INSERT INTO recommendations (answer_combination, film_stock_1, film_stock_2, film_stock_3)
-             VALUES ($1, $2, $3, $4)
-             ON CONFLICT (answer_combination) DO NOTHING`,
-            [answerCombination, recommendations[0], recommendations[1], recommendations[2]]
-        );
-
         res.json({
-            film_stock_1: recommendations[0],
-            film_stock_2: recommendations[1],
-            film_stock_3: recommendations[2]
+            film_stock_1: filmStockIds[0] ?? null,
+            film_stock_2: filmStockIds[1] ?? null,
+            film_stock_3: filmStockIds[2] ?? null
         });
 
     } catch (error) {

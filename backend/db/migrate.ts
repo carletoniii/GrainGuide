@@ -16,7 +16,7 @@ const createTables = async () => {
         id SERIAL PRIMARY KEY,
         name TEXT UNIQUE NOT NULL,
         brand TEXT NOT NULL,
-        format TEXT[] NOT NULL,  -- Define as array of text
+        format TEXT[] NOT NULL, 
         iso INTEGER NOT NULL,
         color BOOLEAN NOT NULL,
         contrast TEXT CHECK (contrast IN ('low', 'medium', 'high')),
