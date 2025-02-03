@@ -25,24 +25,23 @@ const Questionnaire = () => {
     const handleNext = (answer: string) => {
         setAnswers((prev) => ({ ...prev, [questions[step].id]: answer }));
 
-        if (step === 2) { // After film format selection
+        if (step === 2) { // After selecting film format
             if (answer === "Instant Film") {
-                setStep(11); // Skip to instant film question
+                setStep(10); // Jump directly to Instant Film question
                 return;
             } else if (answer === "Large Format") {
-                setStep(12); // Ask large format size question, then continue normally
+                setStep(11); // Jump to Large Format size question
                 return;
             }
         }
 
-        if (step === 12) { // After large format size selection, continue questionnaire
-            setStep(step + 1);
+        if (step === 10) { // After instant film selection, go directly to results
+            navigate("/results", { state: { answers } });
             return;
         }
 
-
-        if (step === 11) { // End questionnaire after instant film selection
-            navigate("/results", { state: { answers } });
+        if (step === 11) { // After selecting large format size, move to question 4 (skipping Instant Film)
+            setStep(4); // Jump to the next valid question
             return;
         }
 
@@ -52,7 +51,6 @@ const Questionnaire = () => {
             navigate("/results", { state: { answers } });
         }
     };
-
 
     return (
         <motion.div
