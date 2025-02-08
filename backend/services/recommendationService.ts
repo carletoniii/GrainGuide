@@ -19,6 +19,9 @@ const getFilteredFilmStocks = async (userAnswers: string[]) => {
         }
 
         const result = await pool.query(query, queryParams);
+
+        console.log(`✅ Found ${result.rows.length} film stocks after filtering.`); // ✅ Log count
+
         return result.rows;
     } catch (error) {
         console.error("❌ Error fetching film stocks:", error);
@@ -42,7 +45,14 @@ const generateRecommendationsWithOpenAI = async (filmStocks: { name: string }[])
 
         let recommendations: string[] = [];
         try {
-            recommendations = JSON.parse(openAIResponse.replace(/```json|```/g, "").trim()).recommendations || [];
+            try {
+                const parsedResponse = JSON.parse(openAIResponse.replace(/```json|```/g, "").trim());
+                recommendations = parsedResponse.recommendations || [];
+            } catch (parseError) {
+                console.error("❌ OpenAI response invalid:", openAIResponse);
+                recommendations = filmStocks.slice(0, 3).map(f => f.name); // Fallback to top 3
+            }
+
         } catch (parseError) {
             console.error("❌ JSON parsing error from OpenAI response:", parseError);
         }
@@ -95,16 +105,20 @@ export const getRecommendations = async (req: Request, res: Response) => {
             return res.json({ film_stock_1: filmStockId, film_stock_2: null, film_stock_3: null });
         }
 
-        // ⬇️ Normal recommendation process for non-Instant Film ⬇️
+        // ⬇️ Fetch filtered film stocks
         const filmStocks = await getFilteredFilmStocks(userAnswers);
-        if (filmStocks.length === 0) {
-            return res.status(404).json({ error: "No matching film stocks found." });
+        console.log(`✅ Retrieved ${filmStocks.length} film stocks after filtering.`);
+
+        if (filmStocks.length < 3) {
+            console.warn("⚠️ Low film stock count—risk of weak recommendations. Consider adjusting filters.");
         }
 
         let recommendations = await generateRecommendationsWithOpenAI(filmStocks);
         if (recommendations.length === 0) {
+            console.log("⚠️ OpenAI failed—defaulting to first 3 film stocks.");
             recommendations = filmStocks.slice(0, 3).map(f => f.name);
         }
+        console.log("✅ Final recommendations:", recommendations);
 
         const filmStockQuery = `SELECT id, name FROM film_stocks WHERE LOWER(name) IN (${recommendations.map((_, i) => `$${i + 1}`).join(", ")})`;
         const filmStockResult = await pool.query(filmStockQuery, recommendations.map(name => name.toLowerCase()));
@@ -118,10 +132,12 @@ export const getRecommendations = async (req: Request, res: Response) => {
         const film_stock_2 = filmStockMap[recommendations[1]?.toLowerCase()] ?? null;
         const film_stock_3 = filmStockMap[recommendations[2]?.toLowerCase()] ?? null;
 
-        await pool.query(
-            `INSERT INTO recommendations (answer_combination, film_stock_1, film_stock_2, film_stock_3) VALUES ($1, $2, $3, $4) ON CONFLICT (answer_combination) DO NOTHING`,
-            [userAnswers.join(", "), film_stock_1, film_stock_2, film_stock_3]
-        );
+        if (filmFormat !== "Instant Film") {
+            await pool.query(
+                `INSERT INTO recommendations (answer_combination, film_stock_1, film_stock_2, film_stock_3) VALUES ($1, $2, $3, $4) ON CONFLICT (answer_combination) DO NOTHING`,
+                [userAnswers.join(", "), film_stock_1, film_stock_2, film_stock_3]
+            );
+        }
 
         return res.json({ film_stock_1, film_stock_2, film_stock_3 });
     } catch (error) {

@@ -25,27 +25,25 @@ const populateDatabase = async () => {
         fs.createReadStream(csvFilePath)
             .pipe(csvParser())
             .on("data", (row) => {
-                // Preprocess the 'format' field to convert to an array
+                // ✅ Ensure 'format' is properly converted into an array
                 const formatArray = row.format
-                    ? row.format
-                        .replace(/{/g, '')         // Remove the opening curly brace
-                        .replace(/}/g, '')         // Remove the closing curly brace
-                        .split(',')                // Split by commas
-                        .map((item: string) => item.trim().replace(/'/g, '')) // Trim each item and remove quotes
-                    : [];
+                    .replace(/^{/, '')    // Remove leading {
+                    .replace(/}$/, '')    // Remove trailing }
+                    .split(',')
+                    .map((item: string) => item.trim().replace(/^"|"$/g, '')); // Remove unnecessary quotes
 
                 // Store the row data from CSV
                 filmStocks.push({
                     name: row.name,
                     brand: row.brand,
-                    format: formatArray,
-                    iso: row.iso,
-                    color: row.color,
-                    contrast: row.contrast,
-                    grain: row.grain,
+                    format: formatArray,  // ✅ Ensure it's an array
+                    iso: parseInt(row.iso),
+                    color: row.color.toLowerCase() === "true",
+                    contrast: row.contrast.toLowerCase(),
+                    grain: row.grain.toLowerCase(),
                     description: row.description,
-                    image_url: row.image_url,
-                    example_images: row.example_images,
+                    image_url: row.image_url || null,
+                    example_images: row.example_images || null,
                 });
             })
             .on("end", async () => {
@@ -55,19 +53,19 @@ const populateDatabase = async () => {
                 for (const stock of filmStocks) {
                     await pool.query(
                         `INSERT INTO film_stocks (name, brand, format, iso, color, contrast, grain, description, image_url, example_images)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                        VALUES ($1, $2, $3::TEXT[], $4, $5, $6, $7, $8, $9, $10)
                         ON CONFLICT (name) DO NOTHING;`,
                         [
                             stock.name,
                             stock.brand,
-                            stock.format,  // Array will be inserted directly here
-                            parseInt(stock.iso),
-                            stock.color.toLowerCase() === "true",
-                            stock.contrast.toLowerCase(),
-                            stock.grain.toLowerCase(),
+                            stock.format,  // ✅ Insert as proper array
+                            stock.iso,
+                            stock.color,
+                            stock.contrast,
+                            stock.grain,
                             stock.description,
-                            stock.image_url || null,
-                            stock.example_images || null,
+                            stock.image_url,
+                            stock.example_images,
                         ]
                     );
                 }
@@ -80,8 +78,6 @@ const populateDatabase = async () => {
         pool.end();
     }
 };
-
-
 
 // Run the function
 populateDatabase();
