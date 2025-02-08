@@ -23,33 +23,44 @@ const Questionnaire = () => {
     const navigate = useNavigate();
 
     const handleNext = (answer: string) => {
-        setAnswers((prev) => ({ ...prev, [questions[step].id]: answer }));
+        const currentQuestionId = questions[step].id;
+        const updatedAnswers = { ...answers, [currentQuestionId]: answer };
+        setAnswers(updatedAnswers);
 
-        if (step === 2) { // After selecting film format
+        // Handle film format selection (Question 3)
+        if (currentQuestionId === 3) {
             if (answer === "Instant Film") {
                 setStep(10); // Jump directly to Instant Film question
                 return;
             } else if (answer === "Large Format") {
                 setStep(11); // Jump to Large Format size question
                 return;
+            } else {
+                setStep(4); // Skip Instant Film & Large Format and continue normally
+                return;
             }
         }
 
-        if (step === 10) { // After instant film selection, go directly to results
-            navigate("/results", { state: { answers } });
+        // If Instant Film was selected, answer Question 11 and go to results
+        if (currentQuestionId === 11) {
+            navigate("/results", { state: { answers: updatedAnswers } });
             return;
         }
 
-        if (step === 11) { // After selecting large format size, move to question 4 (skipping Instant Film)
-            setStep(4); // Jump to the next valid question
+        // If Large Format was selected, answer Question 12 and return to normal questions
+        if (currentQuestionId === 12) {
+            setStep(4); // Resume normal questionnaire
             return;
         }
 
-        if (step < questions.length - 1) {
-            setStep(step + 1);
-        } else {
-            navigate("/results", { state: { answers } });
+        // 🚨 Prevent Question 11 from appearing for non-Instant Film users
+        if (currentQuestionId === 10) {
+            navigate("/results", { state: { answers: updatedAnswers } }); // Ensure questionnaire ends AFTER Question 10
+            return;
         }
+
+        // Default step increment
+        setStep(step + 1);
     };
 
     return (
