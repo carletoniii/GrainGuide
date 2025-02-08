@@ -61,26 +61,47 @@ export const getRecommendations = async (req: Request, res: Response) => {
             return res.status(400).json({ error: "Missing user answers" });
         }
 
-        const answerCombination = userAnswers.join(", "); // Store the joined answers once
+        // Extract film format
+        const filmFormat = userAnswers[0]; // First question is now film format
 
-        console.log("📌 Checking for existing recommendation for:", answerCombination);
+        // 📌 Ensure Instant Film bypasses AI-based recommendations
+        if (filmFormat === "Instant Film") {
+            const instantFilmType = userAnswers.find((ans: string) => [
+                "Fujifilm Instax Mini",
+                "Fujifilm Instax Square",
+                "Fujifilm Instax Wide",
+                "Polaroid i-Type",
+                "Polaroid 600",
+                "Polaroid SX-70",
+                "Polaroid 8x10"
+            ].includes(ans));
 
-        const existingRecommendation = await pool.query(
-            `SELECT film_stock_1, film_stock_2, film_stock_3 FROM recommendations WHERE answer_combination = $1`,
-            [answerCombination]
-        );
+            const instantFilmMap: Record<string, number> = {
+                "Fujifilm Instax Mini": 33,
+                "Fujifilm Instax Square": 34,
+                "Fujifilm Instax Wide": 35,
+                "Polaroid i-Type": 36,
+                "Polaroid 600": 37,
+                "Polaroid SX-70": 38,
+                "Polaroid 8x10": 39
+            };
 
-        if (existingRecommendation.rows.length > 0) {
-            return res.json(existingRecommendation.rows[0]);
+            const filmStockId = instantFilmMap[instantFilmType!] || null;
+
+            if (!filmStockId) {
+                return res.status(404).json({ error: "Invalid Instant Film selection" });
+            }
+
+            return res.json({ film_stock_1: filmStockId, film_stock_2: null, film_stock_3: null });
         }
 
+        // ⬇️ Normal recommendation process for non-Instant Film ⬇️
         const filmStocks = await getFilteredFilmStocks(userAnswers);
         if (filmStocks.length === 0) {
             return res.status(404).json({ error: "No matching film stocks found." });
         }
 
         let recommendations = await generateRecommendationsWithOpenAI(filmStocks);
-
         if (recommendations.length === 0) {
             recommendations = filmStocks.slice(0, 3).map(f => f.name);
         }
@@ -99,7 +120,7 @@ export const getRecommendations = async (req: Request, res: Response) => {
 
         await pool.query(
             `INSERT INTO recommendations (answer_combination, film_stock_1, film_stock_2, film_stock_3) VALUES ($1, $2, $3, $4) ON CONFLICT (answer_combination) DO NOTHING`,
-            [answerCombination, film_stock_1, film_stock_2, film_stock_3]
+            [userAnswers.join(", "), film_stock_1, film_stock_2, film_stock_3]
         );
 
         return res.json({ film_stock_1, film_stock_2, film_stock_3 });
