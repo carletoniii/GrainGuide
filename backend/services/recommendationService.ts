@@ -5,23 +5,36 @@ import { OPENAI_API_KEY } from "../config";
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
+const formatMap: Record<string, string> = {
+    "35mm": "35mm",
+    "120 (Medium Format)": "120",
+    "Large Format": "Large Format (4x5)",
+    "Instant Film": "Instant Film"
+};
+
 const getFilteredFilmStocks = async (userAnswers: string[]) => {
     try {
         console.log("🔍 Fetching film stocks for:", userAnswers);
         const isColor = userAnswers.includes("Color");
-        const isLargeFormat = userAnswers.includes("Large Format");
+        const format = formatMap[userAnswers[0]] || userAnswers[0]; // Normalize format
 
-        let query = `SELECT id, name, format, color FROM film_stocks WHERE color = $1`;
-        const queryParams: (boolean | string)[] = [isColor];
+        console.log(`🎨 Filter Color: Expecting ${isColor ? "Color" : "Black & White"}`);
+        console.log(`🎞️ Filter Format: ${format}`);
 
-        if (isLargeFormat) {
-            query += ` AND format @> ARRAY['Large Format (4x5)', 'Large Format (8x10)']::text[]`;
-        }
+        // ✅ Fixed SQL Query (now correctly filtering format & color)
+        let query = `
+            SELECT id, name, format, color, iso
+            FROM film_stocks
+            WHERE color = $1
+            AND format @> ARRAY[$2]::text[];
+        `;
+        const queryParams: (boolean | string)[] = [isColor, format];
+
+        console.log(`📝 Executing SQL: ${query} with params:`, queryParams);
 
         const result = await pool.query(query, queryParams);
 
-        console.log(`✅ Found ${result.rows.length} film stocks after filtering.`); // ✅ Log count
-
+        console.log(`✅ Found ${result.rows.length} film stocks after filtering.`);
         return result.rows;
     } catch (error) {
         console.error("❌ Error fetching film stocks:", error);
@@ -29,11 +42,25 @@ const getFilteredFilmStocks = async (userAnswers: string[]) => {
     }
 };
 
-const generateRecommendationsWithOpenAI = async (filmStocks: { name: string }[]): Promise<string[]> => {
+const generateRecommendationsWithOpenAI = async (filmStocks: { name: string, iso: number }[], userAnswers: string[]): Promise<string[]> => {
     try {
         console.log("🧠 Sending request to OpenAI...");
-        const stockNames = filmStocks.map((f: { name: string }) => `"${f.name}"`).join(", ");
-        const prompt = `Rank the top 3 film stocks from this list: [${stockNames}]. Respond with JSON: { "recommendations": ["Film Stock 1", "Film Stock 2", "Film Stock 3"] }`;
+
+        // 🚨 Debugging: Log films before sending to OpenAI
+        filmStocks.forEach(film => console.log(`📜 Sending to OpenAI: ${film.name} (ISO: ${film.iso})`));
+
+        if (filmStocks.length === 0) {
+            console.warn("⚠️ No matching film stocks found. Asking OpenAI for general recommendations.");
+            return [];
+        }
+
+        const stockList = filmStocks.map((f) => `"${f.name}" (ISO ${f.iso})`).join(", ");
+        const userPreferences = userAnswers.slice(1).join(", ");
+
+        const prompt = `Rank the top 3 film stocks from this list: [${stockList}].
+        The user is looking for a film stock that matches these preferences: ${userPreferences}.
+        Prioritize films with the **highest possible ISO**, but if high-ISO films are unavailable, recommend the best alternative.
+        Respond with JSON: { "recommendations": ["Film Stock 1", "Film Stock 2", "Film Stock 3"] }`;
 
         const response = await openai.chat.completions.create({
             model: "gpt-4-turbo",
@@ -43,19 +70,20 @@ const generateRecommendationsWithOpenAI = async (filmStocks: { name: string }[])
         const openAIResponse = response.choices[0]?.message?.content;
         if (!openAIResponse) throw new Error("Invalid OpenAI response: Empty content");
 
+        console.log(`🧠 OpenAI Raw Response: ${openAIResponse}`);
+
         let recommendations: string[] = [];
         try {
-            try {
-                const parsedResponse = JSON.parse(openAIResponse.replace(/```json|```/g, "").trim());
-                recommendations = parsedResponse.recommendations || [];
-            } catch (parseError) {
-                console.error("❌ OpenAI response invalid:", openAIResponse);
-                recommendations = filmStocks.slice(0, 3).map(f => f.name); // Fallback to top 3
+            const parsedResponse = JSON.parse(openAIResponse.replace(/```json|```/g, "").trim());
+            if (Array.isArray(parsedResponse.recommendations)) {
+                recommendations = parsedResponse.recommendations.map((name: string) => name.split(" (ISO")[0].trim());
+            } else {
+                console.error("❌ OpenAI response missing 'recommendations' field:", parsedResponse);
             }
-
         } catch (parseError) {
-            console.error("❌ JSON parsing error from OpenAI response:", parseError);
+            console.error("❌ OpenAI response invalid:", openAIResponse);
         }
+
 
         return recommendations;
     } catch (error) {
@@ -71,8 +99,22 @@ export const getRecommendations = async (req: Request, res: Response) => {
             return res.status(400).json({ error: "Missing user answers" });
         }
 
-        // Extract film format
-        const filmFormat = userAnswers[0]; // First question is now film format
+        // Convert answers into a single string (consistent with how we store it)
+        const answerCombination = userAnswers.join(", ");
+
+        // 🔍 **First, check if a recommendation already exists in the database**
+        const existingRecommendation = await pool.query(
+            `SELECT film_stock_1, film_stock_2, film_stock_3 FROM recommendations WHERE answer_combination = $1`,
+            [answerCombination]
+        );
+
+        if (existingRecommendation.rows.length > 0) {
+            console.log("✅ Returning cached recommendation from database.");
+            return res.json(existingRecommendation.rows[0]);
+        }
+
+        // Extract and normalize film format
+        const filmFormat = formatMap[userAnswers[0]] || userAnswers[0];
 
         // 📌 Ensure Instant Film bypasses AI-based recommendations
         if (filmFormat === "Instant Film") {
@@ -113,15 +155,24 @@ export const getRecommendations = async (req: Request, res: Response) => {
             console.warn("⚠️ Low film stock count—risk of weak recommendations. Consider adjusting filters.");
         }
 
-        let recommendations = await generateRecommendationsWithOpenAI(filmStocks);
+        let recommendations = await generateRecommendationsWithOpenAI(filmStocks, userAnswers);
         if (recommendations.length === 0) {
             console.log("⚠️ OpenAI failed—defaulting to first 3 film stocks.");
             recommendations = filmStocks.slice(0, 3).map(f => f.name);
         }
         console.log("✅ Final recommendations:", recommendations);
 
-        const filmStockQuery = `SELECT id, name FROM film_stocks WHERE LOWER(name) IN (${recommendations.map((_, i) => `$${i + 1}`).join(", ")})`;
-        const filmStockResult = await pool.query(filmStockQuery, recommendations.map(name => name.toLowerCase()));
+        if (recommendations.length === 0) {
+            return res.status(404).json({ error: "No recommendations available" });
+        }
+
+        // ✅ FIX: Prevent SQL error when OpenAI fails
+        const debugQuery = `SELECT id, name FROM film_stocks WHERE LOWER(name) IN (${recommendations.map((_, i) => `$${i + 1}`).join(", ")})`;
+        console.log(`🔍 Debugging film stock lookup query:`, debugQuery, recommendations.map(name => name.toLowerCase()));
+
+        const filmStockResult = await pool.query(debugQuery, recommendations.map(name => name.toLowerCase()));
+        console.log(`✅ Found film stock IDs:`, filmStockResult.rows);
+
 
         const filmStockMap: Record<string, number> = {};
         filmStockResult.rows.forEach((row: { id: number; name: string }) => {
@@ -132,12 +183,12 @@ export const getRecommendations = async (req: Request, res: Response) => {
         const film_stock_2 = filmStockMap[recommendations[1]?.toLowerCase()] ?? null;
         const film_stock_3 = filmStockMap[recommendations[2]?.toLowerCase()] ?? null;
 
-        if (filmFormat !== "Instant Film") {
-            await pool.query(
-                `INSERT INTO recommendations (answer_combination, film_stock_1, film_stock_2, film_stock_3) VALUES ($1, $2, $3, $4) ON CONFLICT (answer_combination) DO NOTHING`,
-                [userAnswers.join(", "), film_stock_1, film_stock_2, film_stock_3]
-            );
-        }
+        // ✅ Save to the recommendations table for future use
+        await pool.query(
+
+            `INSERT INTO recommendations (answer_combination, film_stock_1, film_stock_2, film_stock_3) VALUES ($1, $2, $3, $4) ON CONFLICT (answer_combination) DO NOTHING`,
+            [answerCombination, film_stock_1, film_stock_2, film_stock_3]
+        );
 
         return res.json({ film_stock_1, film_stock_2, film_stock_3 });
     } catch (error) {
@@ -145,3 +196,4 @@ export const getRecommendations = async (req: Request, res: Response) => {
         return res.status(500).json({ error: "Error fetching/saving recommendations" });
     }
 };
+
