@@ -6,12 +6,12 @@ dotenv.config();
 
 // PostgreSQL connection
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.DATABASE_URL,
 });
 
 const createTables = async () => {
-    try {
-        await pool.query(`
+  try {
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS film_stocks (
         id SERIAL PRIMARY KEY,
         name TEXT UNIQUE NOT NULL,
@@ -35,12 +35,12 @@ const createTables = async () => {
       );
     `);
 
-        console.log("✅ Database tables created successfully!");
-    } catch (err) {
-        console.error("❌ Error creating tables", err);
-    } finally {
-        pool.end();
-    }
+    console.log("✅ Database tables created successfully!");
+  } catch (err) {
+    console.error("❌ Error creating tables", err);
+  } finally {
+    pool.end();
+  }
 };
 
 // Run the migration script

@@ -23,78 +23,34 @@ const Questionnaire = () => {
     const navigate = useNavigate();
 
     const handleNext = (answer: string) => {
-        console.log("📌 Current Step:", step);
-        console.log("📌 Current Question ID:", questions[step]?.id);
-        console.log("📌 Selected Answer:", answer);
-
-        if (step >= questions.length) {
-            console.error("❌ ERROR: Step out of bounds! Attempted to access:", step);
-            return;
-        }
-
         const currentQuestion = questions[step];
-        if (!currentQuestion) {
-            console.error("❌ ERROR: Undefined question at step", step);
-            return;
-        }
-
         const updatedAnswers = { ...answers, [currentQuestion.id]: answer };
         setAnswers(updatedAnswers);
 
-        console.log("✅ Answers updated:", updatedAnswers);
-
-        // 📌 Handle Film Format Selection (First Question)
         if (currentQuestion.id === 1) {
-            if (answer === "Instant Film") {
-                console.log("➡️ Jumping to Instant Film selection (Q11)");
-                setStep(10); // Jump to Q11
-                return;
-            } else if (answer === "Large Format") {
-                console.log("➡️ Jumping to Large Format selection (Q12)");
-                setStep(11); // Jump to Q12
-                return;
-            }
+            if (answer === "Instant Film") return setStep(10);
+            if (answer === "Large Format") return setStep(11);
         }
 
-        // 📌 Instant Film Users: Go Straight to Results After Q11
         if (currentQuestion.id === 11) {
-            console.log("🎬 Navigating to results (Instant Film user)");
-            navigate("/results", { state: { answers: updatedAnswers } });
-            return;
+            return navigate("/results", { state: { answers: updatedAnswers } });
         }
 
-        // 📌 Large Format Users: Return to Normal Flow After Q12
         if (currentQuestion.id === 12) {
-            console.log("🔄 Returning to normal flow after Large Format selection");
-            setStep(2); // Resume from second question
-            return;
+            return setStep(2);
         }
 
-        // 🚨 Prevent Non-Instant Film Users from Seeing Question 11
         if (questions[step + 1]?.id === 11 && updatedAnswers[1] !== "Instant Film") {
-            console.log("⏭ Skipping Q11 for non-Instant Film users");
-
-            // ✅ Ensure we don’t go out of bounds
-            if (12 < questions.length) {
-                setStep(12); // ✅ If Q12 exists, skip to it
-            } else {
-                console.log("🎬 Navigating to results (End of questions)");
-                navigate("/results", { state: { answers: updatedAnswers } });
-            }
-            return;
+            if (12 < questions.length) return setStep(12);
+            return navigate("/results", { state: { answers: updatedAnswers } });
         }
 
-        // ✅ Ensure we do not go out of bounds
         if (step + 1 >= questions.length) {
-            console.log("🎬 Navigating to results (End of questions)");
-            navigate("/results", { state: { answers: updatedAnswers } });
-            return;
+            return navigate("/results", { state: { answers: updatedAnswers } });
         }
 
-        console.log("➡️ Moving to next question:", step + 1);
         setStep(step + 1);
     };
-
 
     return (
         <motion.div
@@ -103,14 +59,16 @@ const Questionnaire = () => {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
             transition={{ duration: 0.3 }}
-            className="flex flex-col items-center justify-center h-screen"
+            className="min-h-screen flex flex-col items-center justify-center bg-background text-text px-4 text-center font-sans"
         >
-            <h2 className="text-xl font-semibold">{questions[step].text}</h2>
-            <div className="mt-4 flex flex-col gap-4">
+            <h2 className="text-2xl sm:text-3xl font-semibold mb-10 max-w-content">
+                {questions[step].text}
+            </h2>
+            <div className="flex flex-col gap-4 w-full max-w-md">
                 {questions[step].options.map((option) => (
                     <button
                         key={option}
-                        className="px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition"
+                        className="py-3 px-6 rounded-md bg-white text-primary border border-gray-300 shadow-sm hover:bg-highlight hover:text-background transition-colors duration-200"
                         onClick={() => handleNext(option)}
                     >
                         {option}
@@ -118,6 +76,7 @@ const Questionnaire = () => {
                 ))}
             </div>
         </motion.div>
+
     );
 };
 
