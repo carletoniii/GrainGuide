@@ -30,3 +30,10 @@
    ```bash
    git clone https://github.com/your-username/grainguide.git
    cd grainguide
+
+---
+
+## 📷 Image Credits
+
+The homepage photo of film rolls was taken by [Eye Speak](https://unsplash.com/@eyespeak) and is used under the [Unsplash License](https://unsplash.com/license).  
+Original image: [unsplash.com/photos/three-green-and-white-cans-DH87j5UKK4w](https://unsplash.com/photos/three-green-and-white-cans-DH87j5UKK4w)
