@@ -1,10 +1,11 @@
 import { Pool } from "pg";
 import dotenv from "dotenv";
+import path from "path"; // <-- needed for resolving the path
 
-// Load environment variables
-dotenv.config();
+// ✅ Load environment variables from the correct file location
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
-// PostgreSQL connection
+// ✅ PostgreSQL connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });

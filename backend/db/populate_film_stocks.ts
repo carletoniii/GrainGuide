@@ -4,10 +4,10 @@ import { Pool } from "pg";
 import csvParser from "csv-parser";
 import dotenv from "dotenv";
 
-// Load environment variables
-dotenv.config();
+// ✅ Explicitly load the .env file from the backend directory
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
-// PostgreSQL connection
+// ✅ PostgreSQL connection
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
 });
@@ -22,7 +22,7 @@ const populateDatabase = async () => {
         // Read and parse the CSV file
         const filmStocks: any[] = [];
 
-        fs.createReadStream(csvFilePath)
+        fs.createReadStream(csvFilePath, { encoding: 'utf8' })
             .pipe(csvParser())
             .on("data", (row) => {
                 // ✅ Ensure 'format' is properly converted into an array
