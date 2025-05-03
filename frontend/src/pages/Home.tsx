@@ -27,7 +27,7 @@ const Homepage = () => {
 
                 <p className="text-lg text-gray-700 mb-10">
                     Discover the perfect film stock for your shooting style. <br />
-                    Answer a few questions and get AI-powered recommendations.
+                    GrainGuide uses AI-driven logic and smart filtering to recommend film stocks based on your preferences and conditions.
                 </p>
 
                 <button

@@ -83,7 +83,7 @@ const ResultsPage = () => {
         <div className="min-h-screen bg-background text-text px-6 pt-28 sm:pt-32 md:pt-36 lg:pt-40 pb-12 font-space-grotesk">
             <h2 className="text-3xl font-bold text-center mb-10">Your Recommended Film Stocks</h2>
             <div className="grid gap-10 max-w-4xl mx-auto">
-                <AnimatePresence mode="wait">
+                <AnimatePresence>
                     {loading ? (
                         <>
                             <SkeletonCard key="skeleton-1" />

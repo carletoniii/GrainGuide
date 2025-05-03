@@ -14,16 +14,29 @@ const About = () => {
             <section className="mb-10">
                 <h2 className="text-2xl font-semibold mb-4">What is GrainGuide?</h2>
                 <p className="text-lg leading-relaxed">
-                    GrainGuide is an interactive tool that helps photographers discover the perfect film stock based on their shooting preferences and conditions.
-                    Whether you're chasing golden hour portraits or experimental black & white frames, GrainGuide is designed to make choosing film intuitive and personalized.
+                    GrainGuide is a personalized film stock recommendation app designed for photographers who shoot on analog formats like 35mm, 120 (medium format), large format, or instant film. It helps users discover film stocks that match their artistic style, lighting conditions, and creative goals—whether that means high-contrast black & white portraits, dreamy vintage landscapes, or clean modern color street shots.
+                </p>
+                <p className="text-lg leading-relaxed mt-4">
+                    Rather than offering generic suggestions, GrainGuide tailors recommendations through a dynamic questionnaire and a backend system that combines rule-based filtering with AI-assisted insight. The result is a smarter, more human-like recommendation process—one that reflects both the photographer’s intent and the personality of each film stock.
                 </p>
             </section>
 
             <section className="mb-10">
                 <h2 className="text-2xl font-semibold mb-4">How it works</h2>
                 <p className="text-lg leading-relaxed">
-                    Users answer a dynamic questionnaire tailored to their film format (35mm, 120, large format, or instant), and GrainGuide analyzes these preferences through a hybrid recommendation system.
-                    The system combines smart filters with AI-driven logic powered by OpenAI's GPT-4-turbo to suggest relevant film stocks from a PostgreSQL database.
+                    GrainGuide is a full-stack web application built with React (Vite) on the frontend, Express and TypeScript on the backend, PostgreSQL for data persistence, and OpenAI's GPT-4-turbo for AI-assisted recommendations. Styling is handled with TailwindCSS, and animated transitions use Framer Motion for smooth visual flow.
+                </p>
+                <p className="text-lg leading-relaxed mt-4">
+                    Users begin by completing a multi-step questionnaire that adapts to their chosen film format (35mm, 120, large format, or instant). As they progress, their answers are collected into a structured preference object.
+                </p>
+                <p className="text-lg leading-relaxed mt-4">
+                    Once submitted, the backend filters a curated PostgreSQL film stock database using those preferences—removing any options that clearly do not match based on ISO range, color vs. black & white, grain level, contrast, and other key metadata. If the resulting set is large or ambiguous, a prompt is generated using film metadata and passed to OpenAI’s GPT-4-turbo via API call, which ranks and selects the top three film stock recommendations.
+                </p>
+                <p className="text-lg leading-relaxed mt-4">
+                    To avoid unnecessary OpenAI calls, the system includes a caching layer: each unique answer combination is hashed and stored in a separate recommendations table. If the same set of answers is submitted again, the system retrieves the cached recommendations instead of making a new API call—improving performance and reducing cost.
+                </p>
+                <p className="text-lg leading-relaxed mt-4">
+                    This hybrid architecture provides fast, cost-efficient, and highly personalized recommendations by blending deterministic filtering with the creativity of AI. It also showcases the potential of full-stack development combined with modern AI tooling.
                 </p>
             </section>
 
