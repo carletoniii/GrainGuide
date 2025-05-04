@@ -28,32 +28,38 @@ Dev Tools: ESLint, dotenv, GitHub
 
 📦 Installation
 
-Clone the repo
+Clone the repo:
 
 git clone https://github.com/your-username/grainguide.git
 cd grainguide
 
-Install dependencies for both frontend and backend
+Install dependencies for both frontend and backend:
 
 # In root or respective frontend/backend folders
 npm install
 
-Set up environment variables
+Set up environment variables:
 
 In /server, create a .env file:
 
 OPENAI_API_KEY=your-openai-key
 DATABASE_URL=your-database-url
 
-Start the backend
+Start the backend:
 
 cd server
 npm run dev
 
-Start the frontend
+Start the frontend:
 
 cd frontend
 npm run dev
+
+🌐 Deployment
+
+GrainGuide is live at: https://grainguide.app
+
+Deployed using Vercel for the frontend and Render for the backend, with PostgreSQL hosted on Supabase. Environment variables and production database credentials are managed via each platform’s respective settings dashboard.
 
 🔍 Lighthouse Scores (Production Build)
 
@@ -69,8 +75,6 @@ Metrics based on local build at http://localhost:3000 using Lighthouse in Chrome
 
 📷 Image Credits
 
-The homepage photo of film rolls was taken by Eye Speak and is used under the Unsplash License.Original image: unsplash.com/photos/three-green-and-white-cans-DH87j5UKK4w
+The homepage photo of film rolls was taken by Brian Huynh and is used under the Unsplash License.Original image: https://unsplash.com/photos/a-close-up-of-a-bunch-of-film-reels-Q1JB5XRwJkQ
 
-📌 Deployment Instructions (Coming Soon)
-
-This section will include instructions for setting up production database credentials, hosting, and environment configuration when you're ready to deploy publicly.
+The photo of three green and white film canisters was taken by Eye Speak and is used under the Unsplash License.Original image: https://unsplash.com/photos/three-green-and-white-cans-DH87j5UKK4w
