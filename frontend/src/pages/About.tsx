@@ -19,6 +19,9 @@ const About = () => {
                 <p className="text-lg leading-relaxed mt-4">
                     Rather than offering generic suggestions, GrainGuide tailors recommendations through a dynamic questionnaire and a backend system that combines rule-based filtering with AI-assisted insight. The result is a smarter, more human-like recommendation process—one that reflects both the photographer’s intent and the personality of each film stock.
                 </p>
+                <p className="text-lg leading-relaxed mt-4">
+                    For those who want to browse independently, GrainGuide also includes a detailed Film Catalog. This sortable and filterable library allows users to explore every film stock in the database based on format, ISO, color type, contrast, and grain. It’s the perfect companion to the recommendation engine, giving users the freedom to dig deeper into the catalog or find new favorites on their own.
+                </p>
             </section>
 
             <section className="mb-10">
@@ -34,6 +37,9 @@ const About = () => {
                 </p>
                 <p className="text-lg leading-relaxed mt-4">
                     To avoid unnecessary OpenAI calls, the system includes a caching layer: each unique answer combination is hashed and stored in a separate recommendations table. If the same set of answers is submitted again, the system retrieves the cached recommendations instead of making a new API call—improving performance and reducing cost.
+                </p>
+                <p className="text-lg leading-relaxed mt-4">
+                    In addition to the recommendation engine, the Film Catalog provides a powerful manual browsing experience. Users can explore all available film stocks using intuitive filters for format, ISO group, color type, contrast, and grain. A built-in sorting tool allows the list to be reordered by name or ISO sensitivity. This catalog is ideal for photographers who want to compare options directly or learn more about specific film characteristics outside the quiz flow.
                 </p>
                 <p className="text-lg leading-relaxed mt-4">
                     This hybrid architecture provides fast, cost-efficient, and highly personalized recommendations by blending deterministic filtering with the creativity of AI. It also showcases the potential of full-stack development combined with modern AI tooling.

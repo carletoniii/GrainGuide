@@ -4,8 +4,10 @@ import { AnimatePresence } from "framer-motion";
 import Home from "./pages/Home";
 import FilmFinder from "./pages/FilmFinder";
 import ResultsPage from "./pages/ResultsPage";
-import About from "./pages/About"; // ✅ Import About
+import About from "./pages/About";
 import Header from "./components/Header";
+import FilmCatalog from "./pages/FilmCatalog";
+import ScrollToTop from "./components/ScrollToTop";
 
 const App = () => {
   const location = useLocation();
@@ -13,12 +15,14 @@ const App = () => {
   return (
     <>
       <Header />
+      <ScrollToTop />
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<Home />} />
           <Route path="/filmfinder" element={<FilmFinder />} />
           <Route path="/results" element={<ResultsPage />} />
-          <Route path="/about" element={<About />} /> {/* ✅ Add new route */}
+          <Route path="/about" element={<About />} />
+          <Route path="/catalog" element={<FilmCatalog />} />
         </Routes>
       </AnimatePresence>
     </>
