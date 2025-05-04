@@ -7,6 +7,7 @@
 
 -- Started on 2025-05-04 01:08:09
 
+SET search_path TO public;
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
