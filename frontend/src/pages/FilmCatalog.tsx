@@ -33,7 +33,7 @@ const FilmCatalog = () => {
     useEffect(() => {
         const fetchFilmStocks = async () => {
             try {
-                const response = await axios.get("http://localhost:5000/api/film-stocks");
+                const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/film-stocks`);
                 setFilmStocks(response.data);
             } catch (error) {
                 console.error("Failed to fetch film stocks", error);

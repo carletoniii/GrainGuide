@@ -44,7 +44,7 @@ const ResultsPage = () => {
         const fetchRecommendations = async () => {
             setRecommendations([]);
             try {
-                const response = await axios.post("http://localhost:5000/api/recommendations", {
+                const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/recommendations`, {
                     answers: Object.values(userAnswers),
                 });
 
@@ -57,7 +57,7 @@ const ResultsPage = () => {
                 const filmStockDetails = await Promise.all(
                     filmStockIds.map(async (id) => {
                         try {
-                            const stockResponse = await axios.get(`http://localhost:5000/api/film-stocks/${id}`);
+                            const stockResponse = await axios.get(`${import.meta.env.VITE_API_URL}/api/film-stocks/${id}`);
                             return stockResponse.data;
                         } catch {
                             return null;
