@@ -66,9 +66,26 @@ const ResultsPage = () => {
                 );
 
                 setRecommendations(filmStockDetails.filter(Boolean));
-            } catch (err) {
-                setError("Failed to fetch recommendations. Please try again.");
+            } catch (err: any) {
                 console.error(err);
+                if (axios.isAxiosError(err)) {
+                    const status = err.response?.status;
+                    const message = err.response?.data?.error || err.message;
+
+                    if (status === 429 || message.toLowerCase().includes("quota")) {
+                        setError(
+                            "Uh oh! It looks like we're out of AI usage credits. " +
+                            "Send an email to " +
+                            "carletonfosteriii@gmail.com to request more credits."
+                        );
+                    } else if (status === 500) {
+                        setError("Server error. Our recommendation engine is temporarily unavailable.");
+                    } else {
+                        setError("Failed to fetch recommendations. Please try again.");
+                    }
+                } else {
+                    setError("Unexpected error. Please try again.");
+                }
             } finally {
                 setTimeout(() => setLoading(false), 400); // small buffer for smoother UX
             }
@@ -98,7 +115,22 @@ const ResultsPage = () => {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                         >
-                            {error}
+                            {error.includes("carletonfosteriii@gmail.com") ? (
+                                <>
+                                    Uh oh! It looks like we're out of AI usage credits.
+                                    <br />
+                                    Send an email to{" "}
+                                    <a
+                                        href="mailto:carletonfosteriii@gmail.com"
+                                        className="underline"
+                                    >
+                                        carletonfosteriii@gmail.com
+                                    </a>{" "}
+                                    to request more credits.
+                                </>
+                            ) : (
+                                error
+                            )}
                         </motion.p>
                     ) : recommendations.length > 0 ? (
                         recommendations.map((film, i) => (

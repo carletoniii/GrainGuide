@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import logo from "../assets/Grain-Guide-Logo.png";
+import logo from "../assets/Grain-Guide-Logo.webp";
 
 const Header = () => {
     const [isOpen, setIsOpen] = useState(false);

@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import filmImage from "../assets/film-rolls.png";
+import filmImage from "../assets/film-rolls.webp";
 
 const Homepage = () => {
     const navigate = useNavigate();
